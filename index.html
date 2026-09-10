@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#f5f6f8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="课程表">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>课程表</title>
+<style>
+:root{
+  --bg:#f5f6f8;
+  --card:#fff;
+  --text:#1f2329;
+  --muted:#8a9099;
+  --line:#e9ebef;
+  --timew:42px;
+  --dayw:calc((100vw - 46px)/7);
+  --rowh:44px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif}
+body{min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
+button{font:inherit}
+.app{width:100%;max-width:920px;margin:0 auto;padding:4px 2px 10px}
+
+/* 1. 学校标题 */
+.school-title{
+  height:47px;
+  background:linear-gradient(135deg,#5366df,#7467eb);
+  border-radius:15px;
+  color:#fff;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:0 12px;
+  box-shadow:0 5px 16px rgba(66,77,170,.13);
+}
+.school-title h1{font-size:17px;line-height:1;margin:0;font-weight:850;letter-spacing:.2px}
+.school-title p{font-size:9.5px;line-height:1;margin:6px 0 0;opacity:.86}
+
+/* 2. 周次 / 学期 / 操作 */
+.info-bar{
+  margin-top:4px;
+  min-height:52px;
+  background:#fff;
+  border-radius:14px;
+  padding:7px 8px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  box-shadow:0 4px 15px rgba(35,43,64,.055);
+}
+.week-info{min-width:62px}
+.week-info b{display:block;font-size:18px;line-height:1.05}
+.week-info span{display:block;font-size:9px;color:var(--muted);margin-top:4px}
+.term-info{flex:1;min-width:0;padding-left:7px;border-left:1px solid var(--line)}
+.term-info b{display:block;font-size:11px;line-height:1.25}
+.term-info span{display:block;font-size:9px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-btn{
+  flex:none;border:0;border-radius:10px;height:34px;padding:0 8px;font-size:9.5px;font-weight:700;cursor:pointer
+}
+.top-btn.current{background:#eef1ff;color:#5061ce}
+.top-btn.original{background:#22252a;color:#fff}
+
+/* 3. 整个课程表 */
+.schedule-card{
+  margin-top:4px;
+  background:#fff;
+  border-radius:15px;
+  overflow:hidden;
+  box-shadow:0 4px 16px rgba(35,43,64,.06);
+}
+.week-nav{
+  height:38px;
+  display:grid;
+  grid-template-columns:76px 1fr 76px;
+  align-items:center;
+  border-bottom:1px solid var(--line);
+  padding:0 4px;
+}
+.nav-btn{
+  border:0;background:#f2f3f6;color:#434850;border-radius:9px;height:28px;
+  font-size:10px;font-weight:750;cursor:pointer
+}
+.nav-btn:disabled{opacity:.35}
+.range{text-align:center;line-height:1.1}
+.range b{font-size:11px}
+.range span{display:block;margin-top:3px;font-size:9px;color:var(--muted)}
+
+.day-header{
+  display:grid;
+  grid-template-columns:var(--timew) repeat(7,var(--dayw));
+  width:calc(var(--timew) + 7 * var(--dayw));
+  height:37px;
+  border-bottom:1px solid var(--line);
+  background:#fafbfc;
+}
+.day-head,.corner{
+  border-right:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+}
+.corner{font-size:8px;color:var(--muted)}
+.day-head{flex-direction:column}
+.day-head b{font-size:10px;line-height:1;color:#444}
+.day-head span{font-size:8.5px;line-height:1;margin-top:4px;color:#90959d}
+.day-head.today{background:#eef1ff}
+.day-head.today b,.day-head.today span{color:#5365d5}
+.day-head.holiday{background:#fff1f1}
+.day-head.holiday b,.day-head.holiday span{color:#c84f4f}
+
+.schedule{
+  position:relative;
+  display:grid;
+  grid-template-columns:var(--timew) repeat(7,var(--dayw));
+  grid-template-rows:repeat(11,var(--rowh));
+  width:calc(var(--timew) + 7 * var(--dayw));
+  height:calc(11 * var(--rowh));
+}
+.time-cell,.grid-cell{
+  border-right:1px dashed #e5e7eb;
+  border-bottom:1px dashed #e5e7eb;
+  background:#fff;
+}
+.time-cell{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;color:#70757d;z-index:1
+}
+.time-cell strong{font-size:13px;line-height:1}
+.time-cell span{font-size:6.9px;line-height:1.15;margin-top:3px;color:#92979f}
+.time-cell.evening strong{font-size:9px}
+
+.course{
+  z-index:3;
+  margin:2px;
+  padding:4px 4px;
+  border-radius:9px;
+  border-top:3px solid rgba(0,0,0,.08);
+  overflow:hidden;
+  box-shadow:0 2px 6px rgba(47,58,88,.05);
+  cursor:pointer;
+}
+.course strong{display:block;font-size:9px;line-height:1.2;font-weight:800;word-break:break-all}
+.course small{display:block;font-size:7.6px;line-height:1.17;margin-top:2px;color:#69707a;word-break:break-all}
+.course.evening{
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  padding:2px;border-top-width:2px
+}
+.course.evening strong{font-size:8.7px;margin:0}
+.course.self-study{
+  background:#f2f3f5 !important;color:#7e848d;border-top-color:#d9dce1;
+}
+.course.self-study strong{font-weight:650}
+
+.holiday-block{
+  z-index:8;
+  margin:2px;
+  border-radius:9px;
+  background:rgba(255,235,235,.97);
+  border:1px solid #f5c8c8;
+  color:#c14d4d;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  padding:3px;
+}
+.holiday-block strong{font-size:9px;line-height:1.2}
+.holiday-block span{font-size:7px;margin-top:3px}
+
+/* 详情弹窗 */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(18,22,31,.38);display:none;align-items:flex-end;justify-content:center;
+  padding:10px;z-index:90
+}
+.modal-bg.show{display:flex}
+.detail-modal{
+  width:min(520px,100%);background:#fff;border-radius:20px;padding:16px;
+  box-shadow:0 20px 60px rgba(0,0,0,.22)
+}
+.detail-modal h3{font-size:18px;margin:0 0 12px}
+.close-detail{float:right;border:0;width:34px;height:34px;border-radius:50%;background:#f1f2f5;font-size:18px}
+.detail-grid{display:grid;grid-template-columns:70px 1fr;gap:7px 10px;font-size:13px;line-height:1.5}
+.detail-grid label{color:#92979f}
+
+/* PWA 安装提示只在普通浏览器中显示 */
+.install-hint{display:none;margin-top:5px;padding:8px 10px;background:#eef1ff;border-radius:12px;color:#5261ad;font-size:9px;line-height:1.5}
+
+@media(min-width:700px){
+  :root{--timew:54px;--dayw:112px;--rowh:50px}
+  .app{padding:10px;max-width:860px}
+  .school-title{height:55px}
+  .school-title h1{font-size:20px}
+  .course strong{font-size:10px}
+  .course small{font-size:8px}
+}
+
+.picker-row{
+  margin-top:4px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:4px;
+}
+.picker-box{
+  background:#fff;
+  border-radius:12px;
+  padding:7px 9px;
+  box-shadow:0 3px 12px rgba(35,43,64,.045);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.picker-box label{
+  font-size:9.5px;
+  color:var(--muted);
+  white-space:nowrap;
+}
+.picker-select{
+  flex:1;
+  min-width:0;
+  appearance:none;
+  -webkit-appearance:none;
+  border:0;
+  outline:none;
+  background:#f4f5f7;
+  border-radius:9px;
+  padding:7px 28px 7px 9px;
+  font-size:11px;
+  font-weight:750;
+  color:#343941;
+  background-image:
+    linear-gradient(45deg,transparent 50%,#777 50%),
+    linear-gradient(135deg,#777 50%,transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-size:4px 4px,4px 4px;
+  background-repeat:no-repeat;
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="school-title">
+    <h1>课程表</h1>
+    <p>第五学期</p>
+  </header>
+
+  <section class="info-bar">
+    <div class="week-info">
+      <b id="currentWeekText">第2周</b>
+      <span id="weekDateText">09/07 - 09/13</span>
+    </div>
+    <div class="term-info">
+      <b>2026-2027学年第1学期</b>
+      <span>上课18周</span>
+    </div>
+    <button id="currentWeekBtn" class="top-btn current">当前周</button>
+    
+  </section>
+
+  <section class="picker-row">
+    <div class="picker-box">
+      <label for="monthSelect">月份</label>
+      <select id="monthSelect" class="picker-select" aria-label="选择月份"></select>
+    </div>
+    <div class="picker-box">
+      <label for="weekSelect">周次</label>
+      <select id="weekSelect" class="picker-select" aria-label="选择周次"></select>
+    </div>
+  </section>
+
+  <main class="schedule-card">
+    <div class="week-nav">
+      <button id="prevWeek" class="nav-btn">‹ 上一周</button>
+      <div class="range">
+        <b id="tableWeekText">第2周课程</b>
+        <span id="tableRangeText">9月7日 - 9月13日</span>
+      </div>
+      <button id="nextWeek" class="nav-btn">下一周 ›</button>
+    </div>
+
+    <div id="dayHeader" class="day-header"></div>
+    <div id="schedule" class="schedule"></div>
+  </main>
+
+  <div id="installHint" class="install-hint">
+    Safari 打开网站后，可通过“分享 → 添加到主屏幕”作为课程表 App 使用。
+  </div>
+</div>
+
+<!-- 课程详情 -->
+<div id="detailMask" class="modal-bg">
+  <div class="detail-modal">
+    <button id="detailClose" class="close-detail">×</button>
+    <h3 id="detailTitle"></h3>
+    <div class="detail-grid">
+      <label>日期</label><div id="detailDate"></div>
+      <label>课程</label><div id="detailCourse"></div>
+      <label>时间</label><div id="detailTime"></div>
+      <label>地点</label><div id="detailPlace"></div>
+      <label>周次</label><div id="detailWeeks"></div>
+      <label>类型</label><div id="detailType"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const START = new Date(2026,7,31); // 第1周周一
+const TOTAL_WEEKS = 18;
+const DAYS = ["周一","周二","周三","周四","周五","周六","周日"];
+const FULL_DAYS = ["星期一","星期二","星期三","星期四","星期五","星期六","星期日"];
+const PERIODS = [
+  ["1","08:50","09:30"],["2","09:35","10:15"],["3","10:25","11:05"],["4","11:10","11:50"],
+  ["5","11:55","12:35"],["6","12:40","13:20"],["7","13:30","14:10"],["8","14:15","14:55"],
+  ["9","15:05","15:45"],["10","15:50","16:30"]
+];
+
+const COLORS = {
+  "临床医学概论":"#ece9fb",
+  "临床免疫学检验技术":"#ddf4f0",
+  "临床血液学检验技术":"#fff0cd",
+  "临床微生物学检验技术":"#e5e7fb",
+  "临床基础检验学技术":"#f7dff1",
+  "临床实验室管理":"#def3dd",
+  "学习动员会":"#eadff8",
+  "临床基础检验学技术实验":"#e5e7eb",
+  "临床微生物学检验技术实验":"#dceef7",
+  "临床免疫学检验技术实验":"#ddf0e5",
+  "临床血液学检验技术实验":"#f8e1e5",
+  "临床实验室管理实验":"#eee3d8",
+  "马克思主义基本原理":"#ffe4bf",
+  "中国近现代史纲要":"#fff0ba",
+  "自习":"#f1f2f4"
+};
+
+/* 2026 本学期内法定节假日。节假日当天不显示课程。 */
+const HOLIDAYS = {
+  "2026-09-25":"中秋节",
+  "2026-09-26":"中秋节",
+  "2026-09-27":"中秋节",
+  "2026-10-01":"国庆节",
+  "2026-10-02":"国庆节",
+  "2026-10-03":"国庆节",
+  "2026-10-04":"国庆节",
+  "2026-10-05":"国庆节",
+  "2026-10-06":"国庆节",
+  "2026-10-07":"国庆节",
+  "2027-01-01":"元旦"
+};
+
+const COURSES = [
+  {d:0,n:"临床医学概论",s:1,e:4,w:[1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18],tm:"08:50-11:50",sl:"1-4节",p:"教室",t:"理论课"},
+  {d:0,n:"学习动员会",s:7,e:10,w:[1],tm:"13:30-16:30",sl:"7-10节",p:"教室",t:"会议"},
+  {d:0,n:"临床医学概论",s:7,e:10,w:[2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18],tm:"13:30-16:30",sl:"7-10节",p:"教室",t:"理论课"},
+
+  {d:1,n:"临床免疫学检验技术",s:1,e:4,w:[1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17],tm:"08:50-11:50",sl:"1-4节",p:"教室",t:"理论课"},
+  {d:1,n:"临床血液学检验技术",s:7,e:10,w:[1,2,3,4,5,7,8,9,10,11,12,13],tm:"13:30-16:30",sl:"7-10节",p:"教室",t:"理论课"},
+
+  {d:2,n:"临床微生物学检验技术",s:1,e:4,w:[1,2,3,4,5,7,8,9,10,11,12],tm:"08:50-11:50",sl:"1-4节",p:"教室",t:"理论课"},
+  {d:2,n:"临床基础检验学技术",s:7,e:10,w:[1,2,3,4,5,7,8,9,10,11,12],tm:"13:30-16:30",sl:"7-10节",p:"教室",t:"理论课"},
+  {d:2,n:"临床实验室管理",s:1,e:4,w:[13,14,15,16,17,18],tm:"08:50-11:50",sl:"1-4节",p:"教室",t:"理论课"},
+  {d:2,n:"临床实验室管理实验",s:7,e:10,w:[14,18],tm:"13:30-16:30",sl:"7-10节",p:"实验室",t:"实验课"},
+
+  {d:3,n:"临床基础检验学技术实验",s:1,e:10,w:[3,4,6,13,15,17],tm:"整天实验安排",sl:"1-10节",p:"实验室",t:"实验课"},
+  {d:3,n:"临床微生物学检验技术实验",s:1,e:10,w:[8,9,16],tm:"整天实验安排",sl:"1-10节",p:"实验室",t:"实验课"},
+  {d:3,n:"临床免疫学检验技术实验",s:1,e:10,w:[10,12,14,18],tm:"整天实验安排",sl:"1-10节",p:"实验室",t:"实验课"},
+
+  {d:4,n:"临床微生物学检验技术实验",s:1,e:10,w:[9],tm:"整天实验安排",sl:"1-10节",p:"实验室",t:"实验课"},
+  {d:4,n:"临床血液学检验技术实验",s:1,e:10,w:[10,12,14,15,16],tm:"整天实验安排",sl:"1-10节",p:"实验室",t:"实验课"},
+  {d:4,n:"临床实验室管理实验",s:1,e:10,w:[13],tm:"整天实验安排",sl:"1-10节",p:"实验室",t:"实验课"},
+  {d:4,n:"临床实验室管理",s:1,e:4,w:[7,8],tm:"08:50-11:50",sl:"1-4节",p:"教室",t:"理论课"},
+  {d:4,n:"临床实验室管理",s:7,e:10,w:[1,2],tm:"13:30-16:30",sl:"7-10节",p:"教室",t:"理论课"},
+
+  {d:5,n:"临床血液学检验技术实验",s:1,e:10,w:[7],tm:"整天实验安排",sl:"1-10节",p:"实验室",t:"实验课"}
+];
+
+/* 晚间：有课只在格子里显示课程名；无晚课时周一至周五显示“自习”。 */
+const EVENING_CLASSES = [
+  {d:0,n:"马克思主义基本原理",w:[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],tm:"18:30-20:30",p:"教室",t:"晚间课程"},
+  {d:1,n:"中国近现代史纲要",w:[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],tm:"18:30-20:30",p:"教室",t:"晚间课程"}
+];
+
+const $ = id => document.getElementById(id);
+const schedule = $("schedule");
+const dayHeader = $("dayHeader");
+
+function addDays(date,n){
+  const d=new Date(date.getFullYear(),date.getMonth(),date.getDate());
+  d.setDate(d.getDate()+n);
+  return d;
+}
+function iso(date){
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+}
+function md(date){ return `${date.getMonth()+1}/${date.getDate()}`; }
+function cnDate(date){ return `${date.getMonth()+1}月${date.getDate()}日`; }
+function weekStart(w){ return addDays(START,(w-1)*7); }
+function currentWeek(){
+  const now=new Date(), a=new Date(START.getFullYear(),START.getMonth(),START.getDate());
+  const b=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  return Math.max(1,Math.min(TOTAL_WEEKS,Math.floor((b-a)/86400000/7)+1));
+}
+function weeksText(arr){
+  const a=[...arr].sort((x,y)=>x-y);
+  let out=[],start=a[0],prev=a[0];
+  for(let i=1;i<=a.length;i++){
+    const cur=a[i];
+    if(cur===prev+1){prev=cur;continue}
+    out.push(start===prev?`${start}`:`${start}-${prev}`);
+    start=cur;prev=cur;
+  }
+  return out.join("、")+"周";
+}
+
+let week=currentWeek();
+
+const monthSelect=$("monthSelect");
+const weekSelect=$("weekSelect");
+
+/* 生成第1-18周周次选择 */
+for(let w=1;w<=TOTAL_WEEKS;w++){
+  const opt=document.createElement("option");
+  opt.value=String(w);
+  const st=weekStart(w), ed=addDays(st,6);
+  opt.textContent=`第${w}周 · ${md(st)}-${md(ed)}`;
+  weekSelect.appendChild(opt);
+}
+
+/* 生成本学期涉及月份：2026年8月-2027年1月 */
+const MONTH_OPTIONS=[
+  {y:2026,m:8,label:"2026年8月"},
+  {y:2026,m:9,label:"2026年9月"},
+  {y:2026,m:10,label:"2026年10月"},
+  {y:2026,m:11,label:"2026年11月"},
+  {y:2026,m:12,label:"2026年12月"},
+  {y:2027,m:1,label:"2027年1月"}
+];
+MONTH_OPTIONS.forEach(x=>{
+  const opt=document.createElement("option");
+  opt.value=`${x.y}-${String(x.m).padStart(2,"0")}`;
+  opt.textContent=x.label;
+  monthSelect.appendChild(opt);
+});
+
+function monthKey(date){
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}`;
+}
+
+/* 选择月份时，跳转到该月包含的第一个教学周。
+   如果某周跨月，则优先选择该月实际包含天数最多的教学周。 */
+function bestWeekForMonth(year,month){
+  let best=1,bestCount=-1;
+  for(let w=1;w<=TOTAL_WEEKS;w++){
+    const st=weekStart(w);
+    let count=0;
+    for(let d=0;d<7;d++){
+      const dt=addDays(st,d);
+      if(dt.getFullYear()===year && dt.getMonth()+1===month) count++;
+    }
+    if(count>bestCount){bestCount=count;best=w}
+  }
+  return best;
+}
+
+
+function showDetails(item,date){
+  $("detailTitle").textContent=item.n;
+  $("detailDate").textContent=`${iso(date)} ${FULL_DAYS[item.d]}`;
+  $("detailCourse").textContent=item.n;
+  $("detailTime").textContent=item.tm;
+  $("detailPlace").textContent=item.p;
+  $("detailWeeks").textContent=item.w ? weeksText(item.w) : "本周";
+  $("detailType").textContent=item.t;
+  $("detailMask").classList.add("show");
+}
+
+function renderHeader(){
+  const st=weekStart(week), ed=addDays(st,6), now=new Date();
+  $("currentWeekText").textContent=`第${week}周`;
+  $("weekDateText").textContent=`${md(st)} - ${md(ed)}`;
+  $("tableWeekText").textContent=`第${week}周课程`;
+  $("tableRangeText").textContent=`${cnDate(st)} - ${cnDate(ed)}`;
+  $("prevWeek").disabled=week<=1;
+  $("nextWeek").disabled=week>=TOTAL_WEEKS;
+
+  dayHeader.innerHTML='<div class="corner">日期</div>';
+  for(let d=0;d<7;d++){
+    const date=addDays(st,d), key=iso(date), holiday=HOLIDAYS[key];
+    const div=document.createElement("div");
+    div.className="day-head";
+    if(key===iso(now)) div.classList.add("today");
+    if(holiday) div.classList.add("holiday");
+    div.innerHTML=`<b>${DAYS[d]}</b><span>${md(date)}</span>`;
+    dayHeader.appendChild(div);
+  }
+}
+
+function renderGrid(){
+  schedule.innerHTML="";
+
+  /* 左侧节次与每节时间 */
+  for(let r=1;r<=11;r++){
+    const time=document.createElement("div");
+    time.className="time-cell"+(r===11?" evening":"");
+    time.style.gridColumn="1";
+    time.style.gridRow=String(r);
+    if(r<=10){
+      const p=PERIODS[r-1];
+      time.innerHTML=`<strong>${r}</strong><span>${p[1]}<br>${p[2]}</span>`;
+    }else{
+      time.innerHTML=`<strong>晚间</strong><span>课程 18:30<br>自习 19:30</span>`;
+    }
+    schedule.appendChild(time);
+
+    for(let d=0;d<7;d++){
+      const bg=document.createElement("div");
+      bg.className="grid-cell";
+      bg.style.gridColumn=String(d+2);
+      bg.style.gridRow=String(r);
+      schedule.appendChild(bg);
+    }
+  }
+
+  const st=weekStart(week);
+
+  /* 白天课程：法定节假日直接不显示 */
+  COURSES.filter(c=>c.w.includes(week)).forEach(c=>{
+    const date=addDays(st,c.d);
+    if(HOLIDAYS[iso(date)]) return;
+
+    const el=document.createElement("div");
+    el.className="course";
+    el.style.gridColumn=String(c.d+2);
+    el.style.gridRow=`${c.s} / ${c.e+1}`;
+    el.style.background=COLORS[c.n] || "#eef1f5";
+    el.innerHTML=`<strong>${c.n}</strong><small>${c.p}</small><small>${c.sl} · ${c.tm}</small>`;
+    el.onclick=()=>showDetails(c,date);
+    schedule.appendChild(el);
+  });
+
+  /* 晚间：有课程只显示课程名；没有晚课则周一至周五显示“自习” */
+  for(let d=0;d<5;d++){
+    const date=addDays(st,d), key=iso(date);
+    if(HOLIDAYS[key]) continue;
+
+    const evening=EVENING_CLASSES.find(x=>x.d===d && x.w.includes(week));
+    const el=document.createElement("div");
+    el.className="course evening";
+    el.style.gridColumn=String(d+2);
+    el.style.gridRow="11";
+    if(evening){
+      el.style.background=COLORS[evening.n];
+      el.innerHTML=`<strong>${evening.n}</strong>`;
+      el.onclick=()=>showDetails(evening,date);
+    }else{
+      const study={d,n:"自习",tm:"19:30-21:30",p:"教室",t:"晚自习",w:[week]};
+      el.classList.add("self-study");
+      el.style.background=COLORS["自习"];
+      el.innerHTML="<strong>自习</strong>";
+      el.onclick=()=>showDetails(study,date);
+    }
+    schedule.appendChild(el);
+  }
+
+  /* 法定节假日覆盖整日 */
+  for(let d=0;d<7;d++){
+    const date=addDays(st,d), key=iso(date), holiday=HOLIDAYS[key];
+    if(!holiday) continue;
+    const el=document.createElement("div");
+    el.className="holiday-block";
+    el.style.gridColumn=String(d+2);
+    el.style.gridRow="1 / 12";
+    el.innerHTML=`<strong>${holiday}</strong><span>法定节假日<br>无课</span>`;
+    schedule.appendChild(el);
+  }
+}
+
+function render(){
+  renderHeader();
+  renderGrid();
+  weekSelect.value=String(week);
+  monthSelect.value=monthKey(weekStart(week));
+}
+
+
+weekSelect.onchange=e=>{
+  week=Number(e.target.value);
+  render();
+};
+
+monthSelect.onchange=e=>{
+  const [y,m]=e.target.value.split("-").map(Number);
+  week=bestWeekForMonth(y,m);
+  render();
+};
+
+$("prevWeek").onclick=()=>{if(week>1){week--;render()}};
+$("nextWeek").onclick=()=>{if(week<TOTAL_WEEKS){week++;render()}};
+$("currentWeekBtn").onclick=()=>{week=currentWeek();render()};
+
+$("detailClose").onclick=()=>$("detailMask").classList.remove("show");
+$("detailMask").onclick=e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove("show")};
+
+
+const standalone=window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+if(!standalone) $("installHint").style.display="block";
+
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+}
+
+render();
+</script>
+</body>
+</html>
